@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopAnalysisButton = document.getElementById('stopAnalysisButton');
 
     // 後端 API 網址（Render 部署後的後端網址）
-    const API_BASE_URL = 'http://localhost:8000';
+    const API_BASE_URL = 'https://baseball-0615-backend.onrender.com';
     let websocket = null; // WebSocket 實例，供後續使用
 
     // 加入歷史紀錄清單的函數，顯示最近分析過的影片紀錄
