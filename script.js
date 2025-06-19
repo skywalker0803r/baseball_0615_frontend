@@ -1,3 +1,4 @@
+// script.js (部分修改)
 document.addEventListener('DOMContentLoaded', () => {
     // 取得 DOM 元素
     const videoUpload = document.getElementById('videoUpload');
@@ -5,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageDiv = document.getElementById('message');
     const errorMessageDiv = document.getElementById('error-message');
     const analysisSection = document.getElementById('analysisSection');
-    // const videoPlayer = document.getElementById('videoPlayer'); // 不再需要 videoPlayer
     const analysisCanvas = document.getElementById('analysisCanvas');
     const ctx = analysisCanvas.getContext('2d');
     const currentFrameNumSpan = document.getElementById('currentFrameNum');
@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const API_BASE_URL = 'https://baseball-0615-backend.onrender.com';
     let websocket = null;
+    let currentRecordId = null; // 新增變數來儲存當前的 record_id
 
     const metricLabels = {
         'stride_angle': '步幅角度 (度)',
@@ -29,94 +30,47 @@ document.addEventListener('DOMContentLoaded', () => {
         'hip_rotation': '髖部旋轉 (度)',
         'elbow_height': '手肘高度 (px)',
         'ankle_height': '腳踝高度 (px)',
-        'shoulder_rotation': '肩膀旋轉 (度)',
+        'shoulder_rotation': '肩部旋轉 (度)',
         'torso_tilt_angle': '軀幹傾斜角度 (度)',
-        'release_distance': '釋放距離 (m)',
-        'shoulder_to_hip': '肩髋间距 (m)'
+        'release_distance': '釋放距離 (px)',
+        'shoulder_to_hip': '肩髖距離 (px)'
     };
-    const metricIds = Object.keys(metricLabels);
 
-    //let originalVideoFps = 30; // 不再由前端控制播放速度
-    //let receivedLandmarks = {}; // 不再緩存骨架數據，直接顯示圖像
-    //let animationFrameId = null; // 不再需要 requestAnimationFrame 循環
-
-    // 初始化長條圖
-    function initializeChart() {
-        if (metricsChart) {
-            metricsChart.destroy();
-        }
-        metricsChart = new Chart(metricsChartCanvas, {
-            type: 'bar',
-            data: {
-                labels: Object.values(metricLabels),
-                datasets: [{
-                    label: '關鍵指標數值',
-                    data: new Array(metricIds.length).fill(0),
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    duration: 500,
-                    easing: 'easeInOutQuad'
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: '數值'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: '指標'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                label += context.raw;
-                                return label;
-                            }
-                        }
-                    }
-                }
+    // 載入歷史記錄的函數
+    async function loadHistory() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/history`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        });
-    }
+            const historyRecords = await response.json();
+            historyList.innerHTML = ''; // 清空現有列表
 
-    // 在 DOMContentLoaded 時初始化圖表
-    initializeChart();
-
-    function addHistoryEntry(filename, status, analysisTime) {
-        const li = document.createElement('li');
-        li.textContent = `${analysisTime} - 影片: ${filename} - 狀態: ${status}`;
-        historyList.prepend(li);
-        if (historyList.children.length > 5) {
-            historyList.removeChild(historyList.lastChild);
+            if (historyRecords.length === 0) {
+                historyList.innerHTML = '<li>暫無分析記錄</li>';
+            } else {
+                historyRecords.forEach(record => {
+                    const li = document.createElement('li');
+                    li.textContent = `${record.upload_time} - ${record.filename} (${record.analysis_status}) - 預測: ${record.final_prediction}`;
+                    historyList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load history:', error);
+            historyList.innerHTML = '<li>載入歷史記錄失敗</li>';
         }
     }
 
-    // 處理上傳按鈕點擊事件
+    // 在頁面載入時立即載入歷史記錄
+    loadHistory();
+
+
+    // 移除舊的 addHistoryEntry 函數，因為現在由後端管理
+
     uploadButton.addEventListener('click', async () => {
         const file = videoUpload.files[0];
         if (!file) {
-            errorMessageDiv.textContent = '請先選擇一個影片檔案。';
+            errorMessageDiv.textContent = '請選擇一個影片檔案。';
             errorMessageDiv.classList.remove('hidden');
             return;
         }
@@ -124,22 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.textContent = '影片上傳中...';
         errorMessageDiv.classList.add('hidden');
         uploadButton.disabled = true;
-        
-        predictionResultDisplay.textContent = '等待影片分析完成以獲取模型預測結果...';
-        predictionResultDisplay.classList.remove('good-pitch', 'bad-pitch');
-        
-        initializeChart(); // 重設圖表數據
-        currentFrameNumSpan.textContent = '0'; // 重設幀數顯示
-        ctx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height); // 清空 Canvas
-
+        stopAnalysisButton.disabled = true; // 上傳中也禁用停止按鈕
 
         const formData = new FormData();
         formData.append('file', file);
 
         try {
+            // STEP 1: 上傳影片並獲取 record_id
             const uploadResponse = await fetch(`${API_BASE_URL}/upload_video/`, {
                 method: 'POST',
-                body: formData
+                body: formData,
             });
 
             if (!uploadResponse.ok) {
@@ -148,86 +96,72 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const uploadResult = await uploadResponse.json();
-            messageDiv.textContent = `影片上傳成功: ${uploadResult.filename}，開始分析...`;
-            
-            analysisSection.classList.remove('hidden');
+            messageDiv.textContent = `影片上傳成功，開始分析... (檔案: ${uploadResult.filename})`;
+            currentRecordId = uploadResult.record_id; // 儲存 record_id
 
-            const wsUrl = `${API_BASE_URL.replace('http', 'ws')}/ws/analyze_video/${uploadResult.filename}`;
-            websocket = new WebSocket(wsUrl);
+            // STEP 2: 建立 WebSocket 連線，傳遞 record_id
+            // 注意 WebSocket URL 的改變
+            websocket = new WebSocket(`${API_BASE_URL.replace('http', 'ws')}/ws/analyze_video/${uploadResult.filename}/${currentRecordId}`);
+
+            analysisSection.classList.remove('hidden');
+            stopAnalysisButton.disabled = false;
+            predictionResultDisplay.textContent = '等待影片分析完成以獲取模型預測結果...';
+            predictionResultDisplay.className = ''; // 清除舊的樣式
 
             websocket.onopen = () => {
-                messageDiv.textContent = 'WebSocket 連線成功，正在接收分析數據...';
-                stopAnalysisButton.disabled = false;
+                console.log('WebSocket connection opened.');
             };
 
             websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                // console.log("WebSocket Received:", data); // 暫時保留，用於除錯
 
                 if (data.error) {
                     errorMessageDiv.textContent = `分析錯誤: ${data.error}`;
                     errorMessageDiv.classList.remove('hidden');
                     messageDiv.textContent = '';
-                    websocket.close();
+                    websocket.close(); // 收到錯誤立即關閉 WebSocket
                     return;
                 }
 
-                // 接收影片元數據，用於設置 Canvas 尺寸
                 if (data.video_meta) {
+                    // 根據後端傳來的影片元數據設定 Canvas 尺寸
                     analysisCanvas.width = data.video_meta.width;
                     analysisCanvas.height = data.video_meta.height;
-                    // console.log("Canvas size set to:", analysisCanvas.width, analysisCanvas.height);
-                }
-
-                // 接收圖像數據和骨架點位
-                if (data.image_data) {
-                    // 創建一個 Image 物件來載入 Base64 圖像
+                    console.log(`Canvas resized to: ${analysisCanvas.width}x${analysisCanvas.height}`);
+                } else if (data.image_data) {
+                    // 處理圖像數據
                     const img = new Image();
                     img.onload = () => {
-                        ctx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height); // 清空 Canvas
-                        ctx.drawImage(img, 0, 0, analysisCanvas.width, analysisCanvas.height); // 繪製圖像
+                        ctx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height);
+                        ctx.drawImage(img, 0, 0, analysisCanvas.width, analysisCanvas.height);
                     };
-                    img.src = 'data:image/jpeg;base64,' + data.image_data; // 設置圖像源為 Base64 數據
+                    img.src = 'data:image/jpeg;base64,' + data.image_data;
+                    currentFrameNumSpan.textContent = data.frame_num;
 
-                    // 更新幀數顯示
-                    if (data.frame_num !== undefined) {
-                        currentFrameNumSpan.textContent = data.frame_num;
+                    // 更新指標圖表
+                    if (data.metrics && Object.keys(data.metrics).length > 0) {
+                        updateMetricsChart(data.metrics);
                     }
-
-                    // 更新指標
-                    if (data.metrics) {
-                        const newChartData = metricIds.map(id =>
-                            data.metrics[id] !== undefined ? data.metrics[id] : 0
-                        );
-                        metricsChart.data.datasets[0].data = newChartData;
-                        metricsChart.update();
-                    }
-                }
-                
-                // 更新模型預測結果（分析結束）
-                if (data.final_predict) {
-                    predictionResultDisplay.classList.remove('good-pitch', 'bad-pitch');
+                } else if (data.final_predict) {
+                    // 顯示最終預測結果
+                    predictionResultDisplay.textContent = `最終預測結果: ${data.final_predict}`;
                     if (data.final_predict === '好球') {
-                        predictionResultDisplay.textContent = '好球';
                         predictionResultDisplay.classList.add('good-pitch');
                     } else if (data.final_predict === '壞球') {
-                        predictionResultDisplay.textContent = '壞球';
                         predictionResultDisplay.classList.add('bad-pitch');
                     } else {
-                        predictionResultDisplay.textContent = `分析完成：${data.final_predict}`;
+                        predictionResultDisplay.classList.add('unknown-pitch');
                     }
-
-                    messageDiv.textContent = "分析已完成";
-                    stopAnalysisButton.disabled = true;
-                    uploadButton.disabled = false;
                 }
             };
 
-            websocket.onclose = () => {
+            websocket.onclose = (event) => {
+                console.log('WebSocket connection closed:', event);
                 messageDiv.textContent = '分析已結束或連線斷開。';
                 uploadButton.disabled = false;
                 stopAnalysisButton.disabled = true;
-                addHistoryEntry(uploadResult.filename, '完成', new Date().toLocaleTimeString());
+                // 連線關閉後重新載入歷史記錄
+                loadHistory();
             };
 
             websocket.onerror = (error) => {
@@ -236,7 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageDiv.textContent = '';
                 uploadButton.disabled = false;
                 stopAnalysisButton.disabled = true;
-                addHistoryEntry(file.name, '失敗', new Date().toLocaleTimeString());
+                // 發生錯誤時也重新載入歷史記錄
+                loadHistory();
             };
 
         } catch (error) {
@@ -245,7 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.textContent = '';
             uploadButton.disabled = false;
             if (websocket) websocket.close();
-            addHistoryEntry(file.name, '上傳失敗', new Date().toLocaleTimeString());
+            // 上傳失敗時重新載入歷史記錄
+            loadHistory();
         }
     });
 
@@ -258,5 +194,110 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadButton.disabled = false;
         // 清空 Canvas 內容
         ctx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height);
+        // 手動停止後也重新載入歷史記錄
+        loadHistory();
     });
+
+    // Chart.js 的初始化和更新邏輯 (保持不變)
+    function initMetricsChart() {
+        const ctx = metricsChartCanvas.getContext('2d');
+        metricsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // 幀數
+                datasets: Object.keys(metricLabels).map(key => ({
+                    label: metricLabels[key],
+                    data: [],
+                    borderColor: getRandomColor(),
+                    fill: false,
+                    hidden: false // 預設顯示所有指標
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // 允許 Canvas 不保持固定比例，以便填充空間
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: '幀數'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: '值'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 20
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateMetricsChart(metrics) {
+        const frameNum = parseInt(currentFrameNumSpan.textContent);
+        if (metricsChart) {
+            // 增加新的幀數標籤
+            if (!metricsChart.data.labels.includes(frameNum)) {
+                metricsChart.data.labels.push(frameNum);
+            }
+
+            // 更新每個數據集的數據
+            metricsChart.data.datasets.forEach(dataset => {
+                const metricKey = Object.keys(metricLabels).find(key => metricLabels[key] === dataset.label);
+                if (metricKey && metrics[metricKey] !== undefined) {
+                    // 確保數據點與標籤數量匹配
+                    while (dataset.data.length < metricsChart.data.labels.length -1) {
+                        dataset.data.push(null); // 填補缺失的數據點
+                    }
+                    dataset.data.push(metrics[metricKey]);
+                } else {
+                    // 如果某些指標在某些幀沒有數據，則填充 null
+                    while (dataset.data.length < metricsChart.data.labels.length) {
+                        dataset.data.push(null);
+                    }
+                }
+            });
+
+            // 限制圖表顯示的數據點數量，避免過於密集
+            const maxDataPoints = 150; // 例如，只顯示最近的 150 幀數據
+            if (metricsChart.data.labels.length > maxDataPoints) {
+                const startIndex = metricsChart.data.labels.length - maxDataPoints;
+                metricsChart.data.labels = metricsChart.data.labels.slice(startIndex);
+                metricsChart.data.datasets.forEach(dataset => {
+                    dataset.data = dataset.data.slice(startIndex);
+                });
+            }
+
+            metricsChart.update();
+        }
+    }
+
+    // 生成隨機顏色，用於圖表的數據集
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    // 初始化圖表
+    initMetricsChart();
 });
