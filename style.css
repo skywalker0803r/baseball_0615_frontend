@@ -70,16 +70,59 @@ h1 {
     /* 保持其現有功能，與 analysis-section 並排 */
 }
 
+/* 將 analysis-section 設置為相對定位，以便子元素可以絕對定位在其內部 */
 .analysis-section {
-    /* 保持其現有功能，與 upload-section 並排 */
+    position: relative; /* 新增 */
+    /* 其他保持不變 */
+    padding: 0; /* 移除 padding 讓 video/canvas 盡可能大 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* 確保內容不超出 */
+    /* 設置一個明確的高度，以便 video 和 canvas 能夠填充 */
+    min-height: 300px; /* 例如，根據您的設計調整 */
+    background-color: black; /* 確保背景是黑色，如果影片沒有完全覆蓋 */
 }
+
+/* 原始影片播放器 */
+#videoPlayer {
+    position: absolute; /* 絕對定位 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* 保持影片比例，適應容器 */
+    background-color: black; /* 影片背景 */
+    z-index: 1; /* 確保在 canvas 之下 */
+}
+
+/* 骨架繪製 Canvas */
+#analysisCanvas {
+    position: absolute; /* 絕對定位，與影片疊加 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent; /* 關鍵：讓 canvas 背景透明 */
+    z-index: 2; /* 確保在 video 之上 */
+    border: 1px solid #ccc; /* 邊框保持 */
+    display: block; /* 確保是塊級元素 */
+}
+
 
 .metrics-details-section {
     /* 關鍵指標分析 */
+    height: 400px; /* 固定這個區塊的高度，您可以根據需要調整 */
+    overflow: hidden; /* 隱藏超出內容，確保外觀整潔 */
 }
 
-.suggestions-section {
-    /* 姿勢改善建議 */
+.modelpredict-section {
+    /* 確保預測結果區塊的內容垂直置中 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 .history-section {
@@ -125,14 +168,10 @@ button:hover {
     display: none;
 }
 
-/* Canvas & Metrics Display */
-#analysisCanvas {
-    border: 1px solid #ccc;
-    background-color: #000; /* 影片背景 */
-    display: block;
-    margin: 10px auto; /* 置中顯示 */
-    max-width: 100%; /* 確保響應式 */
-    height: auto; /* 維持比例 */
+/* New style for the metrics chart canvas */
+#metricsChart {
+    flex-grow: 1; /* 讓 canvas 在其父容器中填充剩餘的高度 */
+    max-width: 100%;
 }
 
 #metricsDisplay p {
@@ -151,6 +190,30 @@ button:hover {
     border-radius: 3px;
 }
 
+/* --- Styles for Prediction Result --- */
+#predictionResultDisplay {
+    font-size: 2.5em; /* 大字體 */
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    transition: all 0.3s ease-in-out; /* 平滑過渡效果 */
+}
+
+.good-pitch {
+    color: white;
+    background-color: #28a745; /* 綠色背景 */
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.5); /* 綠色陰影 */
+}
+
+.bad-pitch {
+    color: white;
+    background-color: #dc3545; /* 紅色背景 */
+    box-shadow: 0 0 15px rgba(220, 53, 69, 0.5); /* 紅色陰影 */
+}
+/* --- End New Styles --- */
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .top-row, .bottom-row {
@@ -159,5 +222,12 @@ button:hover {
     .section {
         min-width: unset; /* 取消最小寬度限制 */
         width: 100%; /* 填充整個寬度 */
+        height: auto; /* 在小螢幕下恢復自動高度，以避免內容截斷 */
+    }
+    .metrics-details-section {
+        height: auto; /* 在小螢幕下，讓高度自動調整 */
+    }
+    .analysis-section {
+        min-height: 250px; /* 在小螢幕下適度調整高度 */
     }
 }

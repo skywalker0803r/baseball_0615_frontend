@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>棒球投手姿勢分析儀表板</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -21,7 +22,7 @@
 
             <div class="section analysis-section hidden" id="analysisSection">
                 <h2>2. 姿勢分析結果 (即時串流)</h2>
-                <canvas id="analysisCanvas" width="500" height="280"></canvas>
+                <canvas id="analysisCanvas"></canvas>
                 <p><strong>當前幀數:</strong> <span id="currentFrameNum">0</span></p>
                 <button id="stopAnalysisButton">停止分析</button>
             </div>
@@ -30,24 +31,13 @@
         <div class="bottom-row">
             <div class="section metrics-details-section">
                 <h2>關鍵指標分析</h2>
-                <div id="metricsDisplay">
-                    <p><strong>步幅角度:</strong> <span id="stride_angle">---</span> 度</p>
-                    <p><strong>投擲角度:</strong> <span id="throwing_angle">---</span> 度</p>
-                    <p><strong>手臂對稱性:</strong> <span id="arm_symmetry">---</span> %</p>
-                    <p><strong>髖部旋轉:</strong> <span id="hip_rotation">---</span> 度</p>
-                    <p><strong>手肘高度:</strong> <span id="elbow_height">---</span> px</p>
-                    <p><strong>腳踝高度:</strong> <span id="ankle_height">---</span> px</p>
-                    <p><strong>肩膀旋轉:</strong> <span id="shoulder_rotation">---</span> 度</p>
-                    <p><strong>軀幹傾斜角度:</strong> <span id="torso_tilt_angle">---</span> 度</p>
-                    <p><strong>釋放距離:</strong> <span id="release_distance">---</span> m</p>
-                    <p><strong>肩髋间距:</strong> <span id="shoulder_to_hip">---</span> m</p>
-                </div>
+                <canvas id="metricsChart" width="400" height="300"></canvas>
             </div>  
 
             <div class="section modelpredict-section">
                 <h2>模型預測結果</h2>
                 <div id="modelpredictContent">
-                    <p>等待影片分析完成以獲取模型預測結果...</p>
+                    <span id="predictionResultDisplay">等待影片分析完成以獲取模型預測結果...</span>
                 </div>
             </div>
 
@@ -55,7 +45,7 @@
                 <h2>今日歷史記錄</h2>
                 <ul id="historyList">
                     <li>暫無分析記錄</li>
-                    </ul>
+                </ul>
             </div>
         </div>
     </div>
