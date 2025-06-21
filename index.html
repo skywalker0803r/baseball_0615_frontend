@@ -18,6 +18,19 @@
                 <button id="uploadButton">上傳影片並開始分析</button>
                 <div id="message"></div>
                 <div id="error-message" class="hidden"></div>
+                
+                <div id="progressBarContainer" class="hidden">
+                    <div class="progress-bar-wrapper">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                    <span id="progressText">0%</span>
+                </div>
+
+                <div id="playbackControls" class="hidden">
+                    <button id="playPauseButton">播放</button>
+                    <input type="range" id="frameSlider" min="0" value="0">
+                </div>
+            
             </div>
 
             <div class="section analysis-section hidden" id="analysisSection">
