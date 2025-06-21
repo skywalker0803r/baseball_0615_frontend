@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyList = document.getElementById('historyList');
     const stopAnalysisButton = document.getElementById('stopAnalysisButton');
 
+    const viewAllHistoryButton = document.getElementById('viewAllHistoryButton'); // 新增獲取按鈕
+
     const API_BASE_URL = 'https://baseball-0615-backend.onrender.com';
     let websocket = null;
     let currentRecordId = null; // 新增變數來儲存當前的 record_id
@@ -196,6 +198,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height);
         // 手動停止後也重新載入歷史記錄
         loadHistory();
+    });
+
+    // 新增導航到歷史儀表板的按鈕事件
+    viewAllHistoryButton.addEventListener('click', () => {
+        window.location.href = 'history_dashboard.html'; // 導航到新的頁面
     });
 
     // Chart.js 的初始化和更新邏輯 (保持不變)

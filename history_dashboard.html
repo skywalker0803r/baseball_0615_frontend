@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歷史紀錄儀表板 - 棒球投手姿勢分析</title>
+    <link rel="stylesheet" href="style.css"> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>歷史紀錄儀表板</h1>
+        <button onclick="window.location.href='index.html'" style="margin-bottom: 20px;">返回主頁</button>
+
+        <div class="section history-selection-section">
+            <h2>選擇分析紀錄</h2>
+            <div class="selection-group">
+                <label for="recordSelect1">選擇紀錄 1:</label>
+                <select id="recordSelect1"></select>
+            </div>
+            <div class="selection-group">
+                <label for="recordSelect2">選擇紀錄 2 (用於比較):</label>
+                <select id="recordSelect2"></select>
+            </div>
+            <button id="compareButton" style="margin-top: 10px;">比較選定紀錄</button>
+            <div id="dashboardMessage" style="margin-top: 10px; color: green; font-weight: bold;"></div>
+            <div id="dashboardError" style="margin-top: 10px; color: red; font-weight: bold;"></div>
+        </div>
+
+        <div class="section comparison-display-section">
+            <div class="record-display-container">
+                <div class="record-display" id="recordDisplay1">
+                    <h3>紀錄 1 詳細</h3>
+                    <p><strong>檔案名稱:</strong> <span id="filename1">N/A</span></p>
+                    <p><strong>上傳時間:</strong> <span id="uploadTime1">N/A</span></p>
+                    <p><strong>分析狀態:</strong> <span id="status1">N/A</span></p>
+                    <p><strong>最終預測:</strong> <span id="prediction1">N/A</span></p>
+                    <p><strong>分析時長:</strong> <span id="duration1">N/A</span> 秒</p>
+                    <div class="metrics-chart-container">
+                        <canvas id="metricsChart1"></canvas>
+                    </div>
+                </div>
+                <div class="record-display" id="recordDisplay2">
+                    <h3>紀錄 2 詳細 (比較)</h3>
+                    <p><strong>檔案名稱:</strong> <span id="filename2">N/A</span></p>
+                    <p><strong>上傳時間:</strong> <span id="uploadTime2">N/A</span></p>
+                    <p><strong>分析狀態:</strong> <span id="status2">N/A</span></p>
+                    <p><strong>最終預測:</strong> <span id="prediction2">N/A</span></p>
+                    <p><strong>分析時長:</strong> <span id="duration2">N/A</span> 秒</p>
+                    <div class="metrics-chart-container">
+                        <canvas id="metricsChart2"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="metrics-comparison-chart-container">
+                <h3>指標綜合比較圖</h3>
+                <canvas id="combinedMetricsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="history_dashboard_script.js"></script>
+</body>
+</html>
